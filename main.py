@@ -105,7 +105,6 @@ if __name__ == "__main__":
         groups[identifier].append(pdf_link)
 
     pdf_writer = PdfWriter()
-    progress, groups_len = 0, len(groups)
     for identifier, group in groups.items():
         exam_pdf_link = next(
             (string for string in group if string.endswith("-exam.pdf")), None
@@ -114,21 +113,16 @@ if __name__ == "__main__":
             (string for string in group if string.endswith("-sk.pdf")), None
         ) or next((string for string in group if string.endswith("-rg.pdf")), None)
         if not exam_pdf_link or not scoring_key_pdf_link:
-            groups_len -= 1
             continue
 
         print("Extracting pdfs from", identifier)
         exam_pdf_response = requests.get(urljoin(selected_link, exam_pdf_link))
         scoring_key_pdf_response = requests.get(urljoin(selected_link, scoring_key_pdf_link))
         if exam_pdf_response.status_code != 200 or scoring_key_pdf_response.status_code != 200:
-            groups_len -= 1
             continue
 
         pdf_writer.append(PdfReader(BytesIO(exam_pdf_response.content)))
         pdf_writer.append(PdfReader(BytesIO(scoring_key_pdf_response.content)))
-
-        progress += 1
-        print((progress / groups_len) * 100, "%")
 
     with open("final.pdf", "wb") as output_pdf:
         pdf_writer.write(output_pdf)
