@@ -1,9 +1,10 @@
-import requests
 from bs4 import BeautifulSoup
+from pypdf import PdfReader, PdfWriter
+import requests
 from urllib.parse import urljoin
 
 MAIN_URL = "https://nysedregents.org/"
-EXCLUDED_HREFS = [
+MAIN_EXCLUDED_HREFS = [
     "http://www.nysed.gov/",
     "#content_column",
     "http://www.nysed.gov/state-assessment",
@@ -33,14 +34,24 @@ EXCLUDED_HREFS = [
     "http://www.nysed.gov/terms-of-use#Accessibility",
     "http://www.nysed.gov/terms-of-use",
 ]
+SUBJECT_EXCLUDED_HREFS = {
+    "https://nysedregents.org/algebratwo/": [
+        "-annotations-",
+        "ccrev.pdf",
+        "cc.pdf",
+        "ltexam.pdf",
+        "examlt.pdf",
+        "exam-lt.pdf",
+    ]
+}
 
 
 def get_valid_input(prompt, max_value):
     while True:
         try:
-            index = int(input(prompt))
-            if 1 <= index <= max_value:
-                return index
+            user_input = int(input(prompt))
+            if 1 <= user_input <= max_value:
+                return user_input
             else:
                 print(
                     "Invalid index. Please enter a number between 1 and %d." % max_value
@@ -49,16 +60,18 @@ def get_valid_input(prompt, max_value):
             print("Invalid input. Please enter a number.")
 
 
-def fetch_links_from_url(url):
+def fetch_hrefs_from_url(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     anchor_tags = soup.find_all("a", href=True)
-    hrefs = [tag["href"] for tag in anchor_tags if tag["href"] not in EXCLUDED_HREFS]
+    hrefs = [
+        tag["href"] for tag in anchor_tags if tag["href"] not in MAIN_EXCLUDED_HREFS
+    ]
     return hrefs
 
 
-def main():
-    links = [urljoin(MAIN_URL, href) for href in fetch_links_from_url(MAIN_URL)]
+if __name__ == "__main__":
+    links = [urljoin(MAIN_URL, href) for href in fetch_hrefs_from_url(MAIN_URL)]
     for i, link in enumerate(links):
         print("%d. %s" % (i + 1, link))
 
@@ -67,9 +80,17 @@ def main():
         len(links),
     )
     selected_link = links[index - 1]
-    selected_urls = fetch_links_from_url(selected_link)
+    selected_hrefs = fetch_hrefs_from_url(selected_link)
     selected_pdfs = [
-        link.split("/")[-1] for link in selected_urls if link.endswith(".pdf")
+        link.split("/")[-1]
+        for link in selected_hrefs
+        if link.endswith(".pdf")
+        and (
+            selected_link not in SUBJECT_EXCLUDED_HREFS
+            or not any(
+                prefix in link for prefix in SUBJECT_EXCLUDED_HREFS[selected_link]
+            )
+        )
     ]
     groups = {}
 
@@ -81,9 +102,6 @@ def main():
 
         groups[identifier].append(pdf_link)
 
+    pdf_writer = PdfWriter()
     for key, value in groups.items():
         print(key, ":", value)
-
-
-if __name__ == "__main__":
-    main()
