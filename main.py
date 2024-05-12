@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from io import BytesIO
 from pypdf import PdfReader, PdfWriter
 import requests
 from urllib.parse import urljoin
@@ -82,16 +83,17 @@ if __name__ == "__main__":
     selected_link = links[index - 1]
     selected_hrefs = fetch_hrefs_from_url(selected_link)
     selected_pdfs = [
-        link.split("/")[-1]
-        for link in selected_hrefs
-        if link.endswith(".pdf")
+        href
+        for href in selected_hrefs
+        if href.endswith(".pdf")
         and (
             selected_link not in SUBJECT_EXCLUDED_HREFS
             or not any(
-                prefix in link for prefix in SUBJECT_EXCLUDED_HREFS[selected_link]
+                prefix in href for prefix in SUBJECT_EXCLUDED_HREFS[selected_link]
             )
         )
     ]
+
     groups = {}
 
     for _, pdf_link in enumerate(selected_pdfs):
@@ -103,5 +105,30 @@ if __name__ == "__main__":
         groups[identifier].append(pdf_link)
 
     pdf_writer = PdfWriter()
-    for key, value in groups.items():
-        print(key, ":", value)
+    progress, groups_len = 0, len(groups)
+    for identifier, group in groups.items():
+        exam_pdf_link = next(
+            (string for string in group if string.endswith("-exam.pdf")), None
+        )
+        scoring_key_pdf_link = next(
+            (string for string in group if string.endswith("-sk.pdf")), None
+        ) or next((string for string in group if string.endswith("-rg.pdf")), None)
+        if not exam_pdf_link or not scoring_key_pdf_link:
+            groups_len -= 1
+            continue
+
+        print("Extracting pdfs from", identifier)
+        exam_pdf_response = requests.get(urljoin(selected_link, exam_pdf_link))
+        scoring_key_pdf_response = requests.get(urljoin(selected_link, scoring_key_pdf_link))
+        if exam_pdf_response.status_code != 200 or scoring_key_pdf_response.status_code != 200:
+            groups_len -= 1
+            continue
+
+        pdf_writer.append(PdfReader(BytesIO(exam_pdf_response.content)))
+        pdf_writer.append(PdfReader(BytesIO(scoring_key_pdf_response.content)))
+
+        progress += 1
+        print((progress / groups_len) * 100, "%")
+
+    with open("final.pdf", "wb") as output_pdf:
+        pdf_writer.write(output_pdf)
