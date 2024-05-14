@@ -73,12 +73,22 @@ def fetch_hrefs_from_url(url):
 
 def write_final_pdf():
     if selected_link == "https://nysedregents.org/Chemistry/":
+        multiple_choice_section = True
+        rating_guide_page = 2
         for exam_page_number, exam_page in enumerate(exam_pdf.pages):
             if len(exam_page.extract_text()) < 0:
                 continue
+            if exam_page.extract_text().find("Record your answers in") != -1:
+                multiple_choice_section = False
             pdf_writer.add_page(exam_page)
-            if exam_page_number > 0:
+            if exam_page_number <= 0:
+                continue
+            if multiple_choice_section:
                 pdf_writer.add_page(scoring_key_pdf.pages[0])
+            else:
+                pdf_writer.add_page(rating_guide_pdf.pages[rating_guide_page])
+                if rating_guide_page + 1 < len(rating_guide_pdf.pages) - 2:
+                    rating_guide_page += 1
     else:
         for exam_page_number, exam_page in enumerate(exam_pdf.pages):
             if len(exam_page.extract_text()) < 0:
@@ -129,7 +139,10 @@ if __name__ == "__main__":
         scoring_key_pdf_link = next(
             (string for string in group if string.endswith("-sk.pdf")), None
         ) or next((string for string in group if string.endswith("-rg.pdf")), None)
-        if not exam_pdf_link or not scoring_key_pdf_link:
+        rating_guide_pdf_link = next(
+            (string for string in group if string.endswith("-rg.pdf")), None
+        )
+        if not exam_pdf_link or not scoring_key_pdf_link or not rating_guide_pdf_link:
             continue
 
         print("Extracting pdfs from", identifier)
@@ -137,14 +150,19 @@ if __name__ == "__main__":
         scoring_key_pdf_response = requests.get(
             urljoin(selected_link, scoring_key_pdf_link)
         )
+        rating_guide_pdf_response = requests.get(
+            urljoin(selected_link, rating_guide_pdf_link)
+        )
         if (
             exam_pdf_response.status_code != 200
             or scoring_key_pdf_response.status_code != 200
+            or rating_guide_pdf_response.status_code != 200
         ):
             continue
 
         exam_pdf = PdfReader(BytesIO(exam_pdf_response.content))
         scoring_key_pdf = PdfReader(BytesIO(scoring_key_pdf_response.content))
+        rating_guide_pdf = PdfReader(BytesIO(rating_guide_pdf_response.content))
         write_final_pdf()
 
     with open("final.pdf", "wb") as final_pdf:
