@@ -71,6 +71,23 @@ def fetch_hrefs_from_url(url):
     return hrefs
 
 
+def write_final_pdf():
+    if selected_link == "https://nysedregents.org/Chemistry/":
+        for exam_page_number, exam_page in enumerate(exam_pdf.pages):
+            if len(exam_page.extract_text()) < 0:
+                continue
+            pdf_writer.add_page(exam_page)
+            if exam_page_number > 0:
+                pdf_writer.add_page(scoring_key_pdf.pages[0])
+    else:
+        for exam_page_number, exam_page in enumerate(exam_pdf.pages):
+            if len(exam_page.extract_text()) < 0:
+                continue
+            pdf_writer.add_page(exam_page)
+            if exam_page_number > 0:
+                pdf_writer.append(scoring_key_pdf)
+
+
 if __name__ == "__main__":
     links = [urljoin(MAIN_URL, href) for href in fetch_hrefs_from_url(MAIN_URL)]
     for i, link in enumerate(links):
@@ -117,12 +134,18 @@ if __name__ == "__main__":
 
         print("Extracting pdfs from", identifier)
         exam_pdf_response = requests.get(urljoin(selected_link, exam_pdf_link))
-        scoring_key_pdf_response = requests.get(urljoin(selected_link, scoring_key_pdf_link))
-        if exam_pdf_response.status_code != 200 or scoring_key_pdf_response.status_code != 200:
+        scoring_key_pdf_response = requests.get(
+            urljoin(selected_link, scoring_key_pdf_link)
+        )
+        if (
+            exam_pdf_response.status_code != 200
+            or scoring_key_pdf_response.status_code != 200
+        ):
             continue
 
-        pdf_writer.append(PdfReader(BytesIO(exam_pdf_response.content)))
-        pdf_writer.append(PdfReader(BytesIO(scoring_key_pdf_response.content)))
+        exam_pdf = PdfReader(BytesIO(exam_pdf_response.content))
+        scoring_key_pdf = PdfReader(BytesIO(scoring_key_pdf_response.content))
+        write_final_pdf()
 
-    with open("final.pdf", "wb") as output_pdf:
-        pdf_writer.write(output_pdf)
+    with open("final.pdf", "wb") as final_pdf:
+        pdf_writer.write(final_pdf)
