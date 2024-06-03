@@ -45,7 +45,10 @@ SUBJECT_EXCLUDED_HREFS = {
         "exam-lt.pdf",
     ]
 }
-
+SUBJECT_MULTIPLE_CHOICE_PHRASES = {
+    "https://nysedregents.org/Chemistry/": "Record your answers in",
+    "https://nysedregents.org/algebratwo/": "Answer all 8 questions in"
+}
 
 def get_valid_input(prompt, max_value):
     while True:
@@ -72,30 +75,25 @@ def fetch_hrefs_from_url(url):
 
 
 def write_final_pdf():
-    if selected_link == "https://nysedregents.org/Chemistry/":
-        multiple_choice_section = True
-        rating_guide_page = 2
-        for exam_page_number, exam_page in enumerate(exam_pdf.pages):
-            if len(exam_page.extract_text()) < 0:
-                continue
-            if exam_page.extract_text().find("Record your answers in") != -1:
-                multiple_choice_section = False
-            pdf_writer.add_page(exam_page)
-            if exam_page_number <= 0:
-                continue
-            if multiple_choice_section:
-                pdf_writer.add_page(scoring_key_pdf.pages[0])
-            else:
-                pdf_writer.add_page(rating_guide_pdf.pages[rating_guide_page])
-                if rating_guide_page + 1 < len(rating_guide_pdf.pages) - 2:
-                    rating_guide_page += 1
-    else:
-        for exam_page_number, exam_page in enumerate(exam_pdf.pages):
-            if len(exam_page.extract_text()) < 0:
-                continue
-            pdf_writer.add_page(exam_page)
-            if exam_page_number > 0:
-                pdf_writer.append(scoring_key_pdf)
+    multiple_choice_section = True
+    rating_guide_page = 2
+    multiple_choice_phrase = SUBJECT_MULTIPLE_CHOICE_PHRASES.get(selected_link)
+    for exam_page_number, exam_page in enumerate(exam_pdf.pages):
+        if len(exam_page.extract_text()) < 0:
+            continue
+        if multiple_choice_phrase and exam_page.extract_text().find(multiple_choice_phrase) != -1:
+            multiple_choice_section = False
+        pdf_writer.add_page(exam_page)
+        if exam_page_number <= 0:
+            continue
+        if multiple_choice_section:
+            pdf_writer.add_page(scoring_key_pdf.pages[0])
+        else:
+            pdf_writer.add_page(rating_guide_pdf.pages[rating_guide_page])
+            if rating_guide_page + 1 < len(rating_guide_pdf.pages) - 2:
+                rating_guide_page += 1
+    if not multiple_choice_phrase:
+        pdf_writer.append(scoring_key_pdf)
 
 
 if __name__ == "__main__":
