@@ -96,6 +96,14 @@ def write_final_pdf():
         pdf_writer.append(scoring_key_pdf)
 
 
+def get_yes_no_input(prompt, default=False):
+    while True:
+        user_input = input(prompt).lower()
+        if user_input in ['y', 'n', '']:
+            return user_input == 'y' if user_input else default
+        print("Invalid input. Please enter 'y' or 'n' (or press Enter for default)")
+
+
 if __name__ == "__main__":
     links = [urljoin(MAIN_URL, href) for href in fetch_hrefs_from_url(MAIN_URL)]
     for i, link in enumerate(links):
@@ -106,6 +114,9 @@ if __name__ == "__main__":
         len(links),
     )
     selected_link = links[index - 1]
+    
+    include_answers = get_yes_no_input("Do you want to include scoring keys and rating guides? [Y/n] ", True)
+    
     selected_hrefs = fetch_hrefs_from_url(selected_link)
     selected_pdfs = [
         href
@@ -132,36 +143,44 @@ if __name__ == "__main__":
     pdf_writer = PdfWriter()
     for identifier, group in groups.items():
         exam_pdf_link = next(
-            (string for string in group if string.endswith("-exam.pdf")), None
+            (string for string in group if string.endswith("exam.pdf")), None
         )
-        scoring_key_pdf_link = next(
-            (string for string in group if string.endswith("-sk.pdf")), None
-        ) or next((string for string in group if string.endswith("-rg.pdf")), None)
-        rating_guide_pdf_link = next(
-            (string for string in group if string.endswith("-rg.pdf")), None
-        )
-        if not exam_pdf_link or not scoring_key_pdf_link or not rating_guide_pdf_link:
+        if not exam_pdf_link:
             continue
-
-        print("Extracting pdfs from", identifier)
+        print("Extracting exam pdf from", identifier)
         exam_pdf_response = requests.get(urljoin(selected_link, exam_pdf_link))
-        scoring_key_pdf_response = requests.get(
-            urljoin(selected_link, scoring_key_pdf_link)
-        )
-        rating_guide_pdf_response = requests.get(
-            urljoin(selected_link, rating_guide_pdf_link)
-        )
-        if (
-            exam_pdf_response.status_code != 200
-            or scoring_key_pdf_response.status_code != 200
-            or rating_guide_pdf_response.status_code != 200
-        ):
+        if exam_pdf_response.status_code != 200:
             continue
-
         exam_pdf = PdfReader(BytesIO(exam_pdf_response.content))
-        scoring_key_pdf = PdfReader(BytesIO(scoring_key_pdf_response.content))
-        rating_guide_pdf = PdfReader(BytesIO(rating_guide_pdf_response.content))
-        write_final_pdf()
+        
+        if include_answers:
+            scoring_key_pdf_link = next(
+                (string for string in group if string.endswith("-sk.pdf")), None
+            ) or next((string for string in group if string.endswith("-rg.pdf")), None)
+            rating_guide_pdf_link = next(
+                (string for string in group if string.endswith("-rg.pdf")), None
+            )
+            if not scoring_key_pdf_link or not rating_guide_pdf_link:
+                continue
+
+            scoring_key_pdf_response = requests.get(
+                urljoin(selected_link, scoring_key_pdf_link)
+            )
+            rating_guide_pdf_response = requests.get(
+                urljoin(selected_link, rating_guide_pdf_link)
+            )
+            if (
+                scoring_key_pdf_response.status_code != 200
+                or rating_guide_pdf_response.status_code != 200
+            ):
+                continue
+
+            scoring_key_pdf = PdfReader(BytesIO(scoring_key_pdf_response.content))
+            rating_guide_pdf = PdfReader(BytesIO(rating_guide_pdf_response.content))
+            write_final_pdf()
+        else:
+            for page in exam_pdf.pages:
+                pdf_writer.add_page(page)
 
     with open("final.pdf", "wb") as final_pdf:
         pdf_writer.write(final_pdf)
