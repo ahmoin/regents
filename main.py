@@ -47,7 +47,10 @@ SUBJECT_EXCLUDED_HREFS = {
 }
 SUBJECT_MULTIPLE_CHOICE_PHRASES = {
     "https://nysedregents.org/Chemistry/": "Record your answers in",
-    "https://nysedregents.org/algebratwo/": "Answer all 8 questions in"
+    "https://nysedregents.org/Physics/": "Record your answers in",
+    "https://nysedregents.org/algebratwo/": "Answer all 8 questions in",
+    "https://nysedregents.org/geometryre/": "Answer all 7 questions in",
+    "https://nysedregents.org/ghg2/home.html": "These questions are based on the accompanying documents",
 }
 
 def get_valid_input(prompt, max_value):
