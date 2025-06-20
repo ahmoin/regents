@@ -52,6 +52,12 @@ SUBJECT_MULTIPLE_CHOICE_PHRASES = {
     "https://nysedregents.org/geometryre/": "Answer all 7 questions in",
     "https://nysedregents.org/ghg2/home.html": "These questions are based on the accompanying documents",
 }
+RATING_GUIDE_EXCLUDE_PAGE_PHRASES = {
+    "Directions to the Teacher",
+    "Teachers should become familiar with the",
+    "Chart for Converting Total Test Raw Scores",
+    "Map to Core Curriculum",
+}
 
 def get_valid_input(prompt, max_value):
     while True:
@@ -78,10 +84,31 @@ def fetch_hrefs_from_url(url):
 
 
 def write_final_pdf():
-    multiple_choice_section = True
-    rating_guide_page = 2
+    rating_guide_page = 0
+    while rating_guide_page < len(rating_guide_pdf.pages):
+        rating_guide_text = rating_guide_pdf.pages[rating_guide_page].extract_text()
+        if not any(phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
+            break
+        rating_guide_page += 1
+    
+    last_rating_guide_page = len(rating_guide_pdf.pages) - 1
+    while last_rating_guide_page >= 0:
+        rating_guide_text = rating_guide_pdf.pages[last_rating_guide_page].extract_text()
+        if not any(phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
+            break
+        last_rating_guide_page -= 1
+
+    last_non_empty_exam_page = len(exam_pdf.pages) - 1
+    while last_non_empty_exam_page >= 0:
+        exam_page_text = exam_pdf.pages[last_non_empty_exam_page].extract_text()
+        if len(exam_page_text) > 0:
+            break
+        last_non_empty_exam_page -= 1
+
     multiple_choice_phrase = SUBJECT_MULTIPLE_CHOICE_PHRASES.get(selected_link)
-    for exam_page_number, exam_page in enumerate(exam_pdf.pages):
+    multiple_choice_section = True
+
+    for exam_page_number, exam_page in enumerate([page for page in exam_pdf.pages if len(page.extract_text()) > 64]):
         if len(exam_page.extract_text()) < 0:
             continue
         if multiple_choice_phrase and exam_page.extract_text().find(multiple_choice_phrase) != -1:
@@ -92,11 +119,16 @@ def write_final_pdf():
         if multiple_choice_section:
             pdf_writer.add_page(scoring_key_pdf.pages[0])
         else:
+            rating_guide_text = rating_guide_pdf.pages[rating_guide_page].extract_text()
             pdf_writer.add_page(rating_guide_pdf.pages[rating_guide_page])
-            if rating_guide_page + 1 < len(rating_guide_pdf.pages) - 2:
+            if rating_guide_page < last_rating_guide_page:
                 rating_guide_page += 1
-    if not multiple_choice_phrase:
-        pdf_writer.append(scoring_key_pdf)
+    if multiple_choice_phrase:
+        if rating_guide_page <= last_rating_guide_page:
+            for page in rating_guide_pdf.pages[rating_guide_page:]:
+                pdf_writer.add_page(page)
+    else:
+        pdf_writer.append(rating_guide_pdf)
 
 
 def get_yes_no_input(prompt, default=False):
