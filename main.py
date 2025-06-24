@@ -46,11 +46,16 @@ SUBJECT_EXCLUDED_HREFS = {
     ]
 }
 SUBJECT_MULTIPLE_CHOICE_PHRASES = {
-    "https://nysedregents.org/Chemistry/": "Record your answers in",
-    "https://nysedregents.org/Physics/": "Record your answers in",
-    "https://nysedregents.org/algebratwo/": "Answer all 8 questions in",
-    "https://nysedregents.org/geometryre/": "Answer all 7 questions in",
-    "https://nysedregents.org/ghg2/home.html": "These questions are based on the accompanying documents",
+    "https://nysedregents.org/Chemistry/":
+    "Record your answers in",
+    "https://nysedregents.org/Physics/":
+    "Record your answers in",
+    "https://nysedregents.org/algebratwo/":
+    "Answer all 8 questions in",
+    "https://nysedregents.org/geometryre/":
+    "Answer all 7 questions in",
+    "https://nysedregents.org/ghg2/home.html":
+    "These questions are based on the accompanying documents",
 }
 RATING_GUIDE_EXCLUDE_PAGE_PHRASES = {
     "Directions to the Teacher",
@@ -59,8 +64,10 @@ RATING_GUIDE_EXCLUDE_PAGE_PHRASES = {
     "Map to Core Curriculum",
 }
 HREF_REPLACEMENTS = {
-    "https://www.nysedregents.org/Physics/613/phys62012-rg.pdf": "https://www.nysedregents.org/Physics/613/phys62013-rg.pdf"
+    "https://www.nysedregents.org/Physics/613/phys62012-rg.pdf":
+    "https://www.nysedregents.org/Physics/613/phys62013-rg.pdf"
 }
+
 
 def get_valid_input(prompt, max_value):
     while True:
@@ -70,8 +77,8 @@ def get_valid_input(prompt, max_value):
                 return user_input
             else:
                 print(
-                    "Invalid index. Please enter a number between 1 and %d." % max_value
-                )
+                    "Invalid index. Please enter a number between 1 and %d." %
+                    max_value)
         except ValueError:
             print("Invalid input. Please enter a number.")
 
@@ -81,7 +88,8 @@ def fetch_hrefs_from_url(url):
     soup = BeautifulSoup(response.text, "html.parser")
     anchor_tags = soup.find_all("a", href=True)
     hrefs = [
-        tag["href"] for tag in anchor_tags if tag["href"] not in MAIN_EXCLUDED_HREFS
+        tag["href"] for tag in anchor_tags
+        if tag["href"] not in MAIN_EXCLUDED_HREFS
     ]
     return hrefs
 
@@ -89,27 +97,26 @@ def fetch_hrefs_from_url(url):
 def write_final_pdf():
     rating_guide_page = 0
     while rating_guide_page < len(rating_guide_pdf.pages):
-        rating_guide_text = rating_guide_pdf.pages[rating_guide_page].extract_text()
-        if not any(
-            phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES
-        ):
+        rating_guide_text = rating_guide_pdf.pages[
+            rating_guide_page].extract_text()
+        if not any(phrase in rating_guide_text
+                   for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
             break
         rating_guide_page += 1
 
     last_rating_guide_page = len(rating_guide_pdf.pages) - 1
     while last_rating_guide_page >= 0:
         rating_guide_text = rating_guide_pdf.pages[
-            last_rating_guide_page
-        ].extract_text()
-        if not any(
-            phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES
-        ):
+            last_rating_guide_page].extract_text()
+        if not any(phrase in rating_guide_text
+                   for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
             break
         last_rating_guide_page -= 1
 
     last_non_empty_exam_page = len(exam_pdf.pages) - 1
     while last_non_empty_exam_page >= 0:
-        exam_page_text = exam_pdf.pages[last_non_empty_exam_page].extract_text()
+        exam_page_text = exam_pdf.pages[last_non_empty_exam_page].extract_text(
+        )
         if len(exam_page_text) > 0:
             break
         last_non_empty_exam_page -= 1
@@ -118,14 +125,11 @@ def write_final_pdf():
     multiple_choice_section = True
 
     for exam_page_number, exam_page in enumerate(
-        [page for page in exam_pdf.pages if len(page.extract_text()) > 64]
-    ):
+        [page for page in exam_pdf.pages if len(page.extract_text()) > 64]):
         if len(exam_page.extract_text()) < 0:
             continue
-        if (
-            multiple_choice_phrase
-            and exam_page.extract_text().find(multiple_choice_phrase) != -1
-        ):
+        if (multiple_choice_phrase and
+                exam_page.extract_text().find(multiple_choice_phrase) != -1):
             multiple_choice_section = False
         pdf_writer.add_page(exam_page)
         if exam_page_number <= 0:
@@ -133,7 +137,8 @@ def write_final_pdf():
         if multiple_choice_section:
             pdf_writer.add_page(scoring_key_pdf.pages[0])
         else:
-            rating_guide_text = rating_guide_pdf.pages[rating_guide_page].extract_text()
+            rating_guide_text = rating_guide_pdf.pages[
+                rating_guide_page].extract_text()
             pdf_writer.add_page(rating_guide_pdf.pages[rating_guide_page])
             if rating_guide_page < last_rating_guide_page:
                 rating_guide_page += 1
@@ -150,37 +155,36 @@ def get_yes_no_input(prompt, default=False):
         user_input = input(prompt).lower()
         if user_input in ["y", "n", ""]:
             return user_input == "y" if user_input else default
-        print("Invalid input. Please enter 'y' or 'n' (or press Enter for default)")
+        print(
+            "Invalid input. Please enter 'y' or 'n' (or press Enter for default)"
+        )
 
 
 if __name__ == "__main__":
-    links = [urljoin(MAIN_URL, href) for href in fetch_hrefs_from_url(MAIN_URL)]
+    links = [
+        urljoin(MAIN_URL, href) for href in fetch_hrefs_from_url(MAIN_URL)
+    ]
     for i, link in enumerate(links):
         print("%d. %s" % (i + 1, link))
 
     index = get_valid_input(
-        "Enter the index of the link you want to select (1 to %d): " % len(links),
+        "Enter the index of the link you want to select (1 to %d): " %
+        len(links),
         len(links),
     )
     selected_link = links[index - 1]
 
     include_answers = get_yes_no_input(
-        "Do you want to include scoring keys and rating guides? [Y/n] ", True
-    )
+        "Do you want to include scoring keys and rating guides? [Y/n] ", True)
 
     selected_hrefs = fetch_hrefs_from_url(selected_link)
     selected_pdfs = [
-        HREF_REPLACEMENTS.get(href, href)
-        for href in selected_hrefs
-        if href.endswith(".pdf")
-        and (
-            selected_link not in SUBJECT_EXCLUDED_HREFS
-            or not any(
-                prefix in href for prefix in SUBJECT_EXCLUDED_HREFS[selected_link]
-            )
-        )
+        HREF_REPLACEMENTS.get(href, href) for href in selected_hrefs
+        if href.endswith(".pdf") and (
+            selected_link not in SUBJECT_EXCLUDED_HREFS or not any(
+                prefix in href
+                for prefix in SUBJECT_EXCLUDED_HREFS[selected_link]))
     ]
-
 
     groups = {}
 
@@ -195,15 +199,9 @@ if __name__ == "__main__":
     pdf_writer = PdfWriter()
     for identifier, group in groups.items():
         exam_pdf_link = next(
-            (
-                string
-                for string in group
-                if (
-                    string.endswith("exam.pdf")
-                    or string.endswith("exam_w.pdf")
-                    or string.endswith("exam611.pdf")
-                )
-            ),
+            (string for string in group
+             if (string.endswith("exam.pdf") or string.endswith("exam_w.pdf")
+                 or string.endswith("exam611.pdf"))),
             None,
         )
         if not exam_pdf_link:
@@ -215,40 +213,33 @@ if __name__ == "__main__":
 
         if include_answers:
             scoring_key_pdf_link = next(
-                (string for string in group if string.endswith("-sk.pdf")), None
-            ) or next(
-                (
-                    string
-                    for string in group
-                    if (string.endswith("-rg.pdf") or string.endswith("-rgw.pdf"))
-                ),
-                None,
-            )
+                (string for string in group if string.endswith("-sk.pdf")),
+                None) or next(
+                    (string
+                     for string in group if (string.endswith("-rg.pdf")
+                                             or string.endswith("-rgw.pdf"))),
+                    None,
+                )
             rating_guide_pdf_link = next(
-                (
-                    string
-                    for string in group
-                    if (string.endswith("-rg.pdf") or string.endswith("-rgw.pdf"))
-                ),
+                (string for string in group if
+                 (string.endswith("-rg.pdf") or string.endswith("-rgw.pdf"))),
                 None,
             )
             if not scoring_key_pdf_link or not rating_guide_pdf_link:
                 continue
 
             scoring_key_pdf_response = requests.get(
-                urljoin(selected_link, scoring_key_pdf_link)
-            )
+                urljoin(selected_link, scoring_key_pdf_link))
             rating_guide_pdf_response = requests.get(
-                urljoin(selected_link, rating_guide_pdf_link)
-            )
-            if (
-                scoring_key_pdf_response.status_code != 200
-                or rating_guide_pdf_response.status_code != 200
-            ):
+                urljoin(selected_link, rating_guide_pdf_link))
+            if (scoring_key_pdf_response.status_code != 200
+                    or rating_guide_pdf_response.status_code != 200):
                 continue
 
-            scoring_key_pdf = PdfReader(BytesIO(scoring_key_pdf_response.content))
-            rating_guide_pdf = PdfReader(BytesIO(rating_guide_pdf_response.content))
+            scoring_key_pdf = PdfReader(
+                BytesIO(scoring_key_pdf_response.content))
+            rating_guide_pdf = PdfReader(
+                BytesIO(rating_guide_pdf_response.content))
             write_final_pdf()
         else:
             for page in exam_pdf.pages:
