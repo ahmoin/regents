@@ -58,6 +58,9 @@ RATING_GUIDE_EXCLUDE_PAGE_PHRASES = {
     "Chart for Converting Total Test Raw Scores",
     "Map to Core Curriculum",
 }
+HREF_REPLACEMENTS = {
+    "https://www.nysedregents.org/Physics/613/phys62012-rg.pdf": "https://www.nysedregents.org/Physics/613/phys62013-rg.pdf"
+}
 
 def get_valid_input(prompt, max_value):
     while True:
@@ -87,14 +90,20 @@ def write_final_pdf():
     rating_guide_page = 0
     while rating_guide_page < len(rating_guide_pdf.pages):
         rating_guide_text = rating_guide_pdf.pages[rating_guide_page].extract_text()
-        if not any(phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
+        if not any(
+            phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES
+        ):
             break
         rating_guide_page += 1
-    
+
     last_rating_guide_page = len(rating_guide_pdf.pages) - 1
     while last_rating_guide_page >= 0:
-        rating_guide_text = rating_guide_pdf.pages[last_rating_guide_page].extract_text()
-        if not any(phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES):
+        rating_guide_text = rating_guide_pdf.pages[
+            last_rating_guide_page
+        ].extract_text()
+        if not any(
+            phrase in rating_guide_text for phrase in RATING_GUIDE_EXCLUDE_PAGE_PHRASES
+        ):
             break
         last_rating_guide_page -= 1
 
@@ -108,10 +117,15 @@ def write_final_pdf():
     multiple_choice_phrase = SUBJECT_MULTIPLE_CHOICE_PHRASES.get(selected_link)
     multiple_choice_section = True
 
-    for exam_page_number, exam_page in enumerate([page for page in exam_pdf.pages if len(page.extract_text()) > 64]):
+    for exam_page_number, exam_page in enumerate(
+        [page for page in exam_pdf.pages if len(page.extract_text()) > 64]
+    ):
         if len(exam_page.extract_text()) < 0:
             continue
-        if multiple_choice_phrase and exam_page.extract_text().find(multiple_choice_phrase) != -1:
+        if (
+            multiple_choice_phrase
+            and exam_page.extract_text().find(multiple_choice_phrase) != -1
+        ):
             multiple_choice_section = False
         pdf_writer.add_page(exam_page)
         if exam_page_number <= 0:
@@ -134,8 +148,8 @@ def write_final_pdf():
 def get_yes_no_input(prompt, default=False):
     while True:
         user_input = input(prompt).lower()
-        if user_input in ['y', 'n', '']:
-            return user_input == 'y' if user_input else default
+        if user_input in ["y", "n", ""]:
+            return user_input == "y" if user_input else default
         print("Invalid input. Please enter 'y' or 'n' (or press Enter for default)")
 
 
@@ -149,12 +163,14 @@ if __name__ == "__main__":
         len(links),
     )
     selected_link = links[index - 1]
-    
-    include_answers = get_yes_no_input("Do you want to include scoring keys and rating guides? [Y/n] ", True)
-    
+
+    include_answers = get_yes_no_input(
+        "Do you want to include scoring keys and rating guides? [Y/n] ", True
+    )
+
     selected_hrefs = fetch_hrefs_from_url(selected_link)
     selected_pdfs = [
-        href
+        HREF_REPLACEMENTS.get(href, href)
         for href in selected_hrefs
         if href.endswith(".pdf")
         and (
@@ -164,6 +180,7 @@ if __name__ == "__main__":
             )
         )
     ]
+
 
     groups = {}
 
@@ -178,22 +195,42 @@ if __name__ == "__main__":
     pdf_writer = PdfWriter()
     for identifier, group in groups.items():
         exam_pdf_link = next(
-            (string for string in group if string.endswith("exam.pdf")), None
+            (
+                string
+                for string in group
+                if (
+                    string.endswith("exam.pdf")
+                    or string.endswith("exam_w.pdf")
+                    or string.endswith("exam611.pdf")
+                )
+            ),
+            None,
         )
         if not exam_pdf_link:
             continue
-        print("Extracting exam pdf from", identifier)
         exam_pdf_response = requests.get(urljoin(selected_link, exam_pdf_link))
         if exam_pdf_response.status_code != 200:
             continue
         exam_pdf = PdfReader(BytesIO(exam_pdf_response.content))
-        
+
         if include_answers:
             scoring_key_pdf_link = next(
                 (string for string in group if string.endswith("-sk.pdf")), None
-            ) or next((string for string in group if string.endswith("-rg.pdf")), None)
+            ) or next(
+                (
+                    string
+                    for string in group
+                    if (string.endswith("-rg.pdf") or string.endswith("-rgw.pdf"))
+                ),
+                None,
+            )
             rating_guide_pdf_link = next(
-                (string for string in group if string.endswith("-rg.pdf")), None
+                (
+                    string
+                    for string in group
+                    if (string.endswith("-rg.pdf") or string.endswith("-rgw.pdf"))
+                ),
+                None,
             )
             if not scoring_key_pdf_link or not rating_guide_pdf_link:
                 continue
